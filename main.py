@@ -1,23 +1,24 @@
 import argparse
 import logging
 from pathlib import Path
-from typing import Iterator
+from typing import List
 
 from gensim.models import KeyedVectors
 
 from Clustering.abstract_cluster_builder import AbstractClusterBuilder
 from Clustering.cluster import Cluster
 from Clustering.similar_dimension_cluster_builder import SimilarDimensionClusterBuilder
+from EntityLinking.entity_linking import EntityLinking
 from FileParsing.embedding_file_parser import EmbeddingFileParser
+from FileParsing.entity_linking_file_parser import EntityLinkingFileParser
 
 
 def main(args) -> None:
     embedding: KeyedVectors = EmbeddingFileParser.create_from_file(args.embeddings)
-    cluster_builder: AbstractClusterBuilder = SimilarDimensionClusterBuilder(embedding=embedding)
-    clusters: Iterator[Cluster] = cluster_builder.run()
+    linking: EntityLinking = EntityLinkingFileParser.create_from_file(args.linking)
 
-    for cluster in clusters:
-        print(cluster)
+    cluster_builder: AbstractClusterBuilder = SimilarDimensionClusterBuilder(embedding=embedding)
+    clusters: List[Cluster] = cluster_builder.run()
 
 
 if __name__ == "__main__":
@@ -30,4 +31,11 @@ if __name__ == "__main__":
         help=f"Path to the embeddings file (word2vec format)",
         required=True
     )
+    parser.add_argument(
+        "--linking",
+        type=Path,
+        help=f"Path to the embedding linking file",
+        required=True
+    )
+
     main(parser.parse_args())
