@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 
 
 class Relation:
@@ -13,5 +13,6 @@ class Relation:
         return Relation(record["person"], record["wdLabel"], record["ps_Label"])
 
     @staticmethod
-    def from_csv_record(record: Dict[str, str]) -> "Relation":
-        return Relation(f"https://www.wikidata.org/wiki/{record['source']}", record["name"], record["value"])
+    def from_csv_row(row: str) -> "Relation":
+        record: List[str] = row.split(",")
+        return Relation(f"https://www.wikidata.org/wiki/{record[0]}", record[1], record[2])
