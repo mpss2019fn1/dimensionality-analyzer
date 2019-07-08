@@ -16,3 +16,14 @@ class Cluster:
 
     def __iter__(self) -> Iterator[str]:
         return iter(self._entities)
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __str__(self):
+        representation: str = f"Cluster #{self._identifier} on dimension {self._dimension}"
+
+        for entity in self._entities:
+            representation += f"\n\t{entity}"
+
+        return representation
