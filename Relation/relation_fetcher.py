@@ -11,8 +11,9 @@ class RelationFetcher:
 
     CACHE_FILE = Path(os.path.dirname(os.path.abspath(__file__)), "..", ".cached_relations.csv")
 
-    def __init__(self, entity_linking: EntityLinking):
+    def __init__(self, entity_linking: EntityLinking, cache_enabled: bool = True):
         self._linking: EntityLinking = entity_linking
+        self._cache_enabled: bool = cache_enabled
         self._cached_relations: Dict[str, List[Relation]] = self._load_cached_relations()
 
     def _load_cached_relations(self) -> Dict[str, List[Relation]]:
@@ -44,7 +45,14 @@ class RelationFetcher:
                     print(f"{relation.source},{relation.name},{relation.value}", file=output_stream)
 
     def fetch(self, embedding_tags: List[str]) -> List[Relation]:
-        pass
+        entities: List[str] = embedding_tags
+        relations: List[Relation] = []
+        if self._cache_enabled:
+            cached_entities = filter(lambda x: x not in self._cached_relations, entities)
+            entities = list(set(entities) - set(cached_entities))
+            cached_relations = (self._cached_relations[entity] for entity in cached_entities)
+            relations.extend([relation for relations in cached_relations for relation in relations])  # list flatting
+        # TODO: Add wikidataEndpoint
 
     def chunk_size(self) -> int:
         pass
