@@ -28,9 +28,10 @@ def main(args) -> None:
     cluster_builder: AbstractClusterBuilder = SimilarDimensionClusterBuilder(embedding=embedding, workers=args.workers)
     clusters: List[Cluster] = cluster_builder.run()
 
+    logging.info(f"printing {len(clusters)} clusters...")
     with open(".clusters.txt", "w+") as clusters_file:
         for cluster in clusters:
-            print(f"{cluster}", file=clusters_file)
+            print(str(cluster), file=clusters_file)
 
 
 if __name__ == "__main__":

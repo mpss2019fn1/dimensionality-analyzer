@@ -1,23 +1,17 @@
 import logging
 import statistics
 import time
-from multiprocessing import Process
-from queue import Queue, Empty
-from types import FunctionType
-from typing import List, Tuple, Any
+from typing import List, Tuple, Optional
 
 from gensim.models import KeyedVectors
 
 from Clustering.cluster import Cluster
 
 
-class SimilarDimensionClusterWorker(Process):
+class SimilarDimensionClusterWorker:
 
-    def __init__(self, name: str, embedding: KeyedVectors, work: Queue):
-        super(SimilarDimensionClusterWorker, self).__init__(name=name)
+    def __init__(self, embedding: KeyedVectors):
         self._embedding: KeyedVectors = embedding
-        self._work: Queue = work
-        self._clusters: List[Cluster] = []
         self._minimum_cluster_size: int = max(10, len(self._embedding.vectors) // (self._embedding.vector_size * 10))
 
         # state for cluster extraction
@@ -30,28 +24,14 @@ class SimilarDimensionClusterWorker(Process):
         self._current_start_index: int = 0
         self._current_end_index: int = 0
 
-    def clusters(self) -> List[Cluster]:
-        return self._clusters
+    def __call__(self, dimension: int) -> Optional[Cluster]:
+        return self.extract_cluster(dimension)
 
-    def run(self) -> None:
-        try:
-            while not self._work.empty():
-                self._dimension = self._work.get_nowait()
-                logging.info(f"[DIMENSION-{self._dimension}] begin")
+    def extract_cluster(self, dimension: int) -> Optional[Cluster]:
+        self._dimension = dimension
 
-                cluster: Cluster = self._extract_cluster()
-                if len(cluster) < self._minimum_cluster_size:
-                    continue
+        logging.info(f"[DIMENSION-{self._dimension}] begin")
 
-                logging.info(f"[DIMENSION-{self._dimension}] => cluster.len: {len(cluster)}")
-                self._clusters.append(cluster)
-
-        except Empty:
-            pass
-
-        logging.info("no more work to do. stopping process", self.name)
-
-    def _extract_cluster(self) -> Cluster:
         cluster: Cluster = Cluster(self._dimension, self._dimension)
 
         vector_values: List[float] = [vector[self._dimension].item() for vector in self._embedding.vectors]
@@ -67,7 +47,7 @@ class SimilarDimensionClusterWorker(Process):
         logging.info(f"[DIMENSION-{self._dimension}] done")
 
         if self._len(self._biggest_cluster) < self._minimum_cluster_size:
-            return cluster
+            return None
 
         for label_index in range(self._biggest_cluster[0], self._biggest_cluster[1]):
             cluster.add(self._sorted_labels[label_index])
@@ -79,9 +59,9 @@ class SimilarDimensionClusterWorker(Process):
         self._current_start_index = 0
 
         execution_times: List[float] = []
-        log_interval: int = len(self._sorted_values) // 100
+        log_interval: int = len(self._sorted_values) // 10
 
-        while self._current_start_index < len(self._sorted_values) - 1:
+        while self._current_start_index < len(self._sorted_values) - self._min_len():
             start_time: float = time.perf_counter()
             self._create_current_cluster()
 
@@ -106,7 +86,8 @@ class SimilarDimensionClusterWorker(Process):
                                       self._current_start_index + self._min_len())
 
         if self._end() - self._start() > self._tolerance:
-            self._current_start_index += 1
+            self._current_start_index = min(len(self._sorted_values) - 1,
+                                            self._current_start_index + 1)
             return
 
         while self._current_end_index < len(self._sorted_values) - 1:

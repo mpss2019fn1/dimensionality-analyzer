@@ -21,7 +21,8 @@ class Cluster:
         return self.__str__()
 
     def __str__(self):
-        representation: str = f"Cluster #{self._identifier} on dimension {self._dimension}"
+        representation: str = f"Cluster #{self._identifier} on dimension {self._dimension} " \
+            f"with {len(self._entities)} contained entities"
 
         for entity in self._entities:
             representation += f"\n\t{entity}"

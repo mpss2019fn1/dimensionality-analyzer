@@ -1,5 +1,5 @@
-from queue import Queue
-from typing import List
+from multiprocessing.pool import Pool
+from typing import List, Iterable
 
 from gensim.models import KeyedVectors
 
@@ -15,21 +15,8 @@ class SimilarDimensionClusterBuilder(AbstractClusterBuilder):
         self._number_of_workers = workers
 
     def run(self) -> List[Cluster]:
-        queues: List[Queue] = [Queue() for _ in range(self._number_of_workers)]
-        for dimension in range(self._embedding.vector_size):
-            queues[dimension % self._number_of_workers].put_nowait(dimension)
+        dimensions: Iterable[int] = (dimension for dimension in range(self._embedding.vector_size))
+        with Pool(processes=self._number_of_workers) as pool:
+            clusters: List[Cluster] = pool.map(SimilarDimensionClusterWorker(self._embedding), dimensions)
 
-        workers: List[SimilarDimensionClusterWorker] = []
-        for i in range(self._number_of_workers):
-            worker: SimilarDimensionClusterWorker = SimilarDimensionClusterWorker(name=f"{i}",
-                                                                                  embedding=self._embedding,
-                                                                                  work=queues[i])
-            worker.start()
-            workers.append(worker)
-
-        clusters: List[Cluster] = []
-        for worker in workers:
-            worker.join()
-            clusters.extend(worker.clusters())
-
-        return clusters
+        return [cluster for cluster in clusters if cluster is not None]
